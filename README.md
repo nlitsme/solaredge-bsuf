@@ -5,7 +5,7 @@ solaredge firmware comes in files with a `.bsuf` extension.
 The layout is as follows:
 
 | ofs  | type  | description
-+------+-------+---------------
+| ---- | ----- | --------------
 | +00  | u64   | magic number: 0x663919145fab6655
 | +08  | u32   | version
 | +0c  | u32   | payload size
@@ -17,7 +17,7 @@ Each entry has this format:
 
 
 | ofs  | type  | description
-+------+-------+---------------
+| ---- | ----- | --------------
 | +00  | u32   | data size
 | +04  | u16   | the entry type
 | +06  | u8[]  | the entry data
@@ -28,7 +28,7 @@ Each entry has this format:
 Overview of entry types.
 
 | type | description
-+------+-------------
+| ---- | ------------
 | 0x00 | 2 dwords
 | 0x01 | 6 dwords + config string, 
 | 0x03 | firmware with 1 version
@@ -44,7 +44,7 @@ Overview of entry types.
 Overview of firmware types
 
 | type | description
-+------+-------------
+| ---- | ------------
 | 0x03 | main ARM cpu firmware
 | 0x0d | DSP2 firmware
 | 0x0e | DSP2 firmware
