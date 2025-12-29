@@ -28,9 +28,9 @@ def saveunique(savedir, prefix, fh):
         fn = f"{savedir}/{prefix}-{i:03d}.dat"
         if not os.path.exists(fn):
             break
-    self.fh.seek(0)
+    fh.seek(0)
     with open(fn, "wb") as ofh:
-        copyfile(self.fh, ofh)
+        copyfile(fh, ofh)
 
 def savefirmware(savedir, fwtype, version, fh):
     """
@@ -59,7 +59,7 @@ class FirmwareType3:
         self.data = fh.read(128)
 
     def dump(self):
-        print(f"fw: z:{self.zero},{self.zero2} c:{self.checksum:04x} s:{self.imagesize:08x} v:{str(self.version)}  {self.data.hex()}")
+        print(f"    fw: z:{self.zero},{self.zero2} c:{self.checksum:04x} s:{self.imagesize:08x} v:{str(self.version)}  {self.data.hex()}")
 
 class EntryType3Firmware:
     """
@@ -72,7 +72,7 @@ class EntryType3Firmware:
         self.fwfh = fh.subreader()
 
     def dump(self):
-        print(f"t{self.fwtype:04x} v{str(self.version)}")
+        print(f"  t{self.fwtype:04x} v{str(self.version)}")
 
         if self.fwtype == 0x300:
             self.fwfh.seek(0)
@@ -80,7 +80,7 @@ class EntryType3Firmware:
             fw.dump()
         else:
             self.fwfh.seek(0)
-            print("fwdata    ", self.fwfh.read(128).hex())
+            print("    fwdata    ", self.fwfh.read(128).hex())
 
     def save(self, savedir):
         if self.fwtype == 0x300:
@@ -108,7 +108,7 @@ class EntryType6Firmware:
         self.fwfh = fh.subreader()
 
     def dump(self):
-        print(f"t{self.fwtype:04x} v{str(self.version1):<16} v{str(self.version2):<16} v{str(self.version3):<16}")
+        print(f"  t{self.fwtype:04x} v{str(self.version1):<16} v{str(self.version2):<16} v{str(self.version3):<16}")
 
         if self.fwtype == 0x300:
             self.fwfh.seek(0)
@@ -116,7 +116,7 @@ class EntryType6Firmware:
             fw.dump()
         else:
             self.fwfh.seek(0)
-            print("fwdata    ", self.fwfh.read(128).hex())
+            print("    fwdata    ", self.fwfh.read(128).hex())
 
     def save(self, savedir):
         if self.fwtype == 0x300:
@@ -139,44 +139,53 @@ class EntryType0:
      ff 17 06 28 ff ff ff ff
     """
     def __init__(self, fh):
-        self.payload = fh.read()
+        self.unk1 = fh.read32le()
+        self.unk2 = fh.read32le()
+
     def dump(self):
-        print("T0", self.payload.hex())
+        print(f"  T0 {self.unk1:08x} {self.unk2:08x}")
 
     def save(self, savedir): pass
 
 class EntryType1:
     """
-     5c 03 c8 01
-     fd ff ff ff
-     fc ff ff ff
-     a6 03 01 00
-     b8 0b 04 00
-     41 54 2b 51 43 46 47 3d 22 6e 77 73 63 61 6e 6d 6f 64 65 22 2c 33 2c 31 0d 00
-     88 13 00 00
+     01c8035c   
+     fffffffd   
+     fffffffc   
+     000103a6   
+     00040bb8   
+     "AT+QCFG="nwscanmode",3,1\r", 00
+     00001388
     """
     def __init__(self, fh):
         self.payload = fh.read()
     def dump(self):
-        print("T1", self.payload.hex())
+        print("  T1", self.payload.hex())
     def save(self, savedir): pass
 
 class EntryType7:
     """
-     00 02 7e 02 f4 01 00 00 -- int:500
-     00 03 6a 03 e4 0c 00 00 -- int:3300
-    
-     00 02 f2 01 00 00 48 42 -- float:50.0
-     00 03 4c 03 00 00 c0 40 -- float:6.0
-     00 03 6a 03 00 40 4e 45 -- float:3300.0
-     00 03 77 03 00 00 80 3f -- float:1.0
-    
-     00 03 70 03 00 00 00 00 70 72 6f 64 32 2e 73 6f 6c 61 72 65 64 67 65 2e 63 6f 6d 00
+    These seem to be properties, some int, float or string
+
+      0200 027e 000001f4 -- int:500
+      0300 036a 00000ce4 -- int:3300
+                        
+      0200 01f2 42480000 -- float:50.0
+      0300 034c 40c00000 -- float:6.0
+      0300 036a 454e4000 -- float:3300.0
+      0300 0377 3f800000 -- float:1.0
+                        
+      0300 0370 00000000 "prod2.solaredge.com", 00
     """
     def __init__(self, fh):
-        self.payload = fh.read()
+        self.unk1 = fh.read16le()
+        self.unk2 = fh.read16le()   # propid
+        self.unk3 = fh.read32le()   # prop value
+        self.text = fh.read().decode().rstrip("\x00")
+
     def dump(self):
-        print("T7", self.payload.hex())
+        print(f"  T7 {self.unk1:04x} {self.unk2:04x} {self.unk3:08x} '{self.text}'")
+
     def save(self, savedir): pass
 
 class EntryType13:
@@ -186,16 +195,16 @@ class EntryType13:
     def __init__(self, fh):
         self.fh = fh
     def dump(self):
-        pass
+        print("  T13", self.fh.read(128).hex())
     def save(self, savedir):
         saveunique(savedir, "t13", self.fh)
 
 class EntryType14:
     """ 0x0000ea60 = 60000 """
     def __init__(self, fh):
-        self.payload = fh.read()
+        self.unk = fh.read32le()
     def dump(self):
-        print("T14", self.payload.hex())
+        print(f"  T14 {self.unk:08x}")
     def save(self, savedir): pass
 
 class EntryType15:
@@ -206,7 +215,7 @@ class EntryType15:
     def __init__(self, fh):
         self.payload = fh.read()
     def dump(self):
-        print("T15", self.payload.hex())
+        print("  T15", self.payload.hex())
     def save(self, savedir): pass
 
 class EntryType20:
@@ -215,8 +224,8 @@ class EntryType20:
     """
     def __init__(self, fh):
         self.fh = fh
-    def dump(self): pass
-
+    def dump(self):
+        print("  T20", self.fh.read(128).hex())
     def save(self, savedir):
         saveunique(savedir, "t20", self.fh)
 
@@ -230,7 +239,7 @@ class EntryType21:
     def __init__(self, fh):
         self.payload = fh.read()
     def dump(self):
-        print("T21", self.payload.hex())
+        print("  T21", self.payload.hex())
     def save(self, savedir): pass
 
 class EntryUnknown:
@@ -239,7 +248,7 @@ class EntryUnknown:
         self.payload = fh.read()
 
     def dump(self):
-        print(f"UNK{self.type}", self.payload.hex())
+        print(f"  UNK{self.type}", self.payload.hex())
     def save(self, savedir): pass
 
 
@@ -311,6 +320,7 @@ class BsufFile:
             obj.dump()
 
     def save(self, savedir):
+        os.makedirs(savedir, exist_ok=True)
         for obj in self.enumentries():
             obj.save(savedir)
 
